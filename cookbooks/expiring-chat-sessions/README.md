@@ -77,6 +77,7 @@ from typing import Annotated, TypedDict
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
+
 class ChatState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
 ```
@@ -101,7 +102,7 @@ and appends the reply. Split this into two pieces in `agent.py`:
 **Part A — create the model** (`agent.py`, `# === Step 2 ===`):
 
 ```python
-def _make_llm() -> BaseChatModel:        # generic interface; FakeListChatModel is one impl
+def _make_llm() -> BaseChatModel:  # generic interface; FakeListChatModel is one impl
     return FakeListChatModel(
         responses=[
             "Hi! I'm your support assistant. How can I help?",
@@ -116,12 +117,13 @@ def _make_llm() -> BaseChatModel:        # generic interface; FakeListChatModel 
 
 ```python
 def build_chat_graph(checkpointer: BaseCheckpointSaver) -> CompiledStateGraph:
-    llm = _make_llm()   # <-- Part A is called here
+    llm = _make_llm()  # <-- Part A is called here
 
     def chatbot(state: ChatState) -> ChatState:
         system = SystemMessage(content="You are a concise, helpful support assistant.")
         response: AIMessage = llm.invoke([system, *state["messages"]])
         return {"messages": [response]}
+
     # ... Step 3 continues in the next section
 ```
 
@@ -177,6 +179,7 @@ AEROSPIKE_HOST: str = "127.0.0.1"
 AEROSPIKE_PORT: int = 3000
 AEROSPIKE_NAMESPACE: str = "test"
 
+
 @contextmanager
 def _connect() -> Iterator[aerospike.Client]:
     client = aerospike.client({"hosts": [(AEROSPIKE_HOST, AEROSPIKE_PORT)]}).connect()
@@ -202,6 +205,7 @@ automatically when the time elapses.
 ```python
 CHAT_TTL_MINUTES: int = 1
 CHAT_REFRESH_ON_READ: bool = False
+
 
 def _build_checkpointer(client: aerospike.Client) -> AerospikeSaver:
     return AerospikeSaver(
@@ -240,6 +244,7 @@ this thread's checkpoints.
 THREAD_ID: str = "session-demo-001"
 
 config: RunnableConfig = {"configurable": {"thread_id": THREAD_ID}}
+
 
 def _say(graph: CompiledStateGraph, config: RunnableConfig, text: str) -> int:
     result = graph.invoke({"messages": [HumanMessage(text)]}, config)
@@ -321,7 +326,7 @@ time.sleep(wait_seconds)
 
 tpl = saver.get_tuple(config)
 if tpl is not None:
-    return 1   # checkpoint still present — TTL has not elapsed yet
+    return 1  # checkpoint still present — TTL has not elapsed yet
 
 count = _say(graph, config, "Hello again?")  # back to 2 messages
 ```

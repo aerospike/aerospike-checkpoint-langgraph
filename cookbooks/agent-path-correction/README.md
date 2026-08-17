@@ -87,6 +87,7 @@ from langgraph.graph.message import add_messages
 
 Intent = Literal["refund", "replacement", "escalate"]
 
+
 class SupportState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
     item: str | None
@@ -114,6 +115,7 @@ _CATALOG = {
     "keyboard": ("AeroPro Mechanical Keyboard", "ORD-20913"),
     "monitor": ("AeroPro 4K Monitor", "ORD-33170"),
 }
+
 
 def _lookup_order(text: str) -> tuple[str | None, str | None]:
     lowered = text.lower()
@@ -162,6 +164,7 @@ def _classify_intent(text: str) -> Intent:
         return "refund"
     return "escalate"
 
+
 def classify(state: SupportState) -> SupportState:
     intent = _classify_intent(_latest_user_text(state["messages"]))
     return {"intent": intent}
@@ -186,6 +189,7 @@ def refund(state: SupportState) -> SupportState:
         "messages": [AIMessage(content=f"I can handle that as a refund for order {order_id}.")],
     }
 
+
 def replacement(state: SupportState) -> SupportState:
     order_id = state["order_id"]
     return {
@@ -194,6 +198,7 @@ def replacement(state: SupportState) -> SupportState:
             AIMessage(content=f"I can handle that as a replacement for order {order_id}.")
         ],
     }
+
 
 def escalate(state: SupportState) -> SupportState:
     order_id = state["order_id"]
@@ -218,6 +223,7 @@ rewind to: order id known, decision not yet made.
 def route(state: SupportState) -> Intent:
     return state["intent"] or "escalate"
 
+
 builder = StateGraph(SupportState)
 builder.add_node("identify_order", identify_order)
 builder.add_node("classify", classify)
@@ -228,7 +234,8 @@ builder.add_node("escalate", escalate)
 builder.add_edge(START, "identify_order")
 builder.add_edge("identify_order", "classify")
 builder.add_conditional_edges(
-    "classify", route,
+    "classify",
+    route,
     {"refund": "refund", "replacement": "replacement", "escalate": "escalate"},
 )
 builder.add_edge("refund", END)
@@ -322,8 +329,14 @@ until `identify_order` runs, then carried by every later checkpoint.
 history = list(saver.list(prod_config))
 for i, tpl in enumerate(reversed(history), start=1):
     values = tpl.checkpoint.get("channel_values", {})
-    print(i, tpl.config["configurable"]["checkpoint_id"], _stage(tpl.metadata.get("step")),
-          values.get("order_id"), values.get("intent"), values.get("resolution"))
+    print(
+        i,
+        tpl.config["configurable"]["checkpoint_id"],
+        _stage(tpl.metadata.get("step")),
+        values.get("order_id"),
+        values.get("intent"),
+        values.get("resolution"),
+    )
 ```
 
 **In the code:** `demo.py`, `# === Step 9 ===` (Phase 3, after the customer's
@@ -350,11 +363,14 @@ rehydrates it.
 
 ```python
 fork_point = next(
-    (tpl for tpl in reversed(history)
-     if _values(tpl).get("order_id") and not _values(tpl).get("resolution")),
+    (
+        tpl
+        for tpl in reversed(history)
+        if _values(tpl).get("order_id") and not _values(tpl).get("resolution")
+    ),
     history[-1],
 )
-rehydrated = saver.get_tuple(fork_point.config)   # one checkpoint read from Aerospike
+rehydrated = saver.get_tuple(fork_point.config)  # one checkpoint read from Aerospike
 # rehydrated state: order_id == "ORD-10482", intent == None, resolution == None
 ```
 
@@ -376,8 +392,8 @@ same `ORD-10482`. LangGraph writes new checkpoints from here; the refund run fro
 Phase 1 stays in Aerospike under its own checkpoint ids.
 
 ```python
-fork_config = fork_point.config                       # thread_id + checkpoint_ns + checkpoint_id
-forked = _resolve(graph, fork_config, CORRECTED_REQUEST)   # "...send a replacement instead."
+fork_config = fork_point.config  # thread_id + checkpoint_ns + checkpoint_id
+forked = _resolve(graph, fork_config, CORRECTED_REQUEST)  # "...send a replacement instead."
 # forked.order_id   == "ORD-10482"   (reused from the checkpoint)
 # forked.resolution == "Replacement selected for order ORD-10482"
 ```

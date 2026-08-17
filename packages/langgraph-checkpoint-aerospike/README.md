@@ -38,13 +38,16 @@ docker run -d --name aerospike -p 3000-3002:3000-3002 container.aerospike.com/ae
    client = aerospike.client({"hosts": [("127.0.0.1", 3000)]}).connect()
    checkpointer = AerospikeSaver(client=client, namespace="test")
 
+
    # 2. Define a minimal LangGraph graph.
    class State(TypedDict):
        messages: Annotated[list, add_messages]
 
+
    def chatbot(state: State) -> State:
        last = state["messages"][-1].content
        return {"messages": [("assistant", f"You said: {last}")]}
+
 
    builder = StateGraph(State)
    builder.add_node("chatbot", chatbot)

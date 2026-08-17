@@ -39,10 +39,12 @@ from langgraph.store.aerospike import AerospikeStore
 client = aerospike.client({"hosts": [("127.0.0.1", 3000)]}).connect()
 store = AerospikeStore(client=client, namespace="test", set="langgraph_store")
 
+
 # 2. Define a graph whose node reads and writes long-term memory.
 class State(TypedDict):
     user_id: str
     food: str
+
 
 def remember_preference(state: State) -> State:
     store = get_store()
@@ -55,6 +57,7 @@ def remember_preference(state: State) -> State:
     profile = store.get(namespace, key="profile")
     print(profile.value)  # {"favorite_food": "pizza"}
     return state
+
 
 builder = StateGraph(State)
 builder.add_node("remember_preference", remember_preference)
